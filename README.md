@@ -9,4 +9,5 @@ Finally a new sample text is embedded and that vector is used to query Mongo ret
 ## Pre-Requisites
 
 Cosmos Mongo Database + connection string
+
 AzureOpenAi instance with an embedding model
