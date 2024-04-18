@@ -11,6 +11,17 @@ load_dotenv(override=True)
 # connect to MongoDB
 client = pymongo.MongoClient(os.environ.get("MONGO_DB_CONNECTION_STRING"), tlsAllowInvalidCertificates=True)
 db = client.get_database("test")
+
+# drop the collection if it exists
+# if "vectors" in db.list_collection_names():
+#     db.get_collection("vectors").drop()
+
+# create a new collection if it doesnt exist
+if "vectors" not in db.list_collection_names():
+    db.create_collection("vectors")
+    
+    
+
 collection = db.get_collection("vectors")
 
 # test connection string
@@ -18,10 +29,6 @@ print(client.list_database_names())
 
 # print all the collections in the database
 print(db.list_collection_names())
-
-# create a new collection if it doesnt exist
-if "vectors" not in db.list_collection_names():
-    db.create_collection("vectors")
 
 collection = db.get_collection("vectors")
 
@@ -32,14 +39,19 @@ create_vector_index = {
             "name": "vector_index",  # You can customize the index name
             "keys": {"vector_field": "cosmosSearch"},  # Replace 'vector_field' with your actual vector field
             "cosmosSearchOptions": {
-                "kind": "vector-ivf",
-                'numLists': 1,
+                # "kind": "vector-ivf",
+                "kind": "vector-hnsw",
+                "efConstruction": 200,  # - ONLY FOR hnsw
+                # 'numLists': 1, # - ONLY FOR ivf
                 "similarity": "COS",  # Or "euclidean" based on your needs
                 "dimensions": 1536  # Set the dimension of your vector
             }
         }
     ]
 }
+
+# delete vector index
+# collection.drop_index("vectors")
 
 # # Create the vector index if it doesn't exist
 if "vector_index" not in collection.index_information():
@@ -65,7 +77,7 @@ headers = {
 
 # Define the payload with the input text
 payload = json.dumps({
-    "input": "The food was delicious and the waiter..."
+    "input": "The food was delicious and the waiter was very friendly."
 })
 
 # Make the POST request
@@ -75,14 +87,16 @@ embedding = response.json()["data"][0]["embedding"]
 
 # ----------------- Store In Mongo -----------------
 
-document = {"text": "The food was delicious and the waiter...", "vector_field": embedding}
+document = {"text": "The food was delicious and the waiter was very friendly.", "vector_field": embedding}
 collection.insert_one(document)
-print("Stored embedding in MongoDB")
+print("Stored embedding in MongoDB ivf index")
 print(collection.index_information())
 
-# ----------------- Embedding the Query -----------------
+
+
+# ----------------- Embedding the Query (user question that will be used to match with docs in Mongo) -----------------
 payload2 = json.dumps({
-    "input": "food "
+    "input": "food was delicious"
 })
 
 # Make the POST request to get an embedding for the query
@@ -94,7 +108,7 @@ query_vector = response2.json()["data"][0]["embedding"]
 pipeline = [
     {
         "$search": {
-            "index": "vector_index",  # Ensure this matches the name of your vector index
+            "index": "vectors",  # Ensure this matches the name of your vector index
             "cosmosSearch": {
                 "vector": query_vector,
                 "path": "vector_field",  # The field where the vector is stored
