@@ -8,6 +8,6 @@ Finally a new sample text is embedded and that vector is used to query Mongo ret
 
 ## Prerequisites
 
-Cosmos Mongo Database + connection string - currently lowest tier of Azure Cosmos DB for MongoDB (vCore) supported is M30
+Cosmos Mongo Database + connection string - currently lowest tier of Azure Cosmos DB for MongoDB (vCore) supported is M40 for hnsw index 
 
 AzureOpenAi instance with an embedding model
